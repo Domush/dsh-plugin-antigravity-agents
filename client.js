@@ -3,7 +3,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require("react");
     const h = React.createElement;
-    const { useState, useEffect, useCallback, useMemo } = React;
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
     const CSS_STYLES = `
       .aga-container {
@@ -313,43 +313,122 @@ window.__ModuleLoader__.load({
       }
 
       /* Session Selector styles */
-      .aga-session-picker {
+      .aga-session-picker-wrapper {
+        position: relative;
+        display: inline-flex;
+        user-select: none;
+      }
+      .aga-session-picker-btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         background: transparent;
         border: none;
         border-radius: 6px;
-        padding: 0 8px;
+        padding: 4px 8px;
         font-size: 13px;
-        color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6));
-        height: 32px;
+        color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.7));
+        cursor: pointer;
+        outline: none;
+        transition: background 0.15s ease, color 0.15s ease;
       }
-      .aga-session-picker:hover {
+      .aga-session-picker-btn:hover,
+      .aga-session-picker-btn.is-open {
+        background: var(--dsw-alias-bg-layer-2, rgba(255, 255, 255, 0.08));
         color: var(--dsw-alias-label-primary, #ffffff);
       }
-      .aga-session-picker-select {
-        background: transparent;
-        border: none;
-        color: inherit;
+      .aga-session-picker-label {
         font-size: 13px;
-        outline: none;
-        cursor: pointer;
-        padding-right: 16px;
+        font-weight: 400;
+        color: inherit;
       }
-      .aga-session-picker-select option {
-        background: #1e1e1e;
+      .aga-session-picker-chevron {
+        width: 12px;
+        height: 12px;
+        opacity: 0.6;
+        transition: transform 0.2s ease;
+        flex-shrink: 0;
+      }
+      .aga-session-picker-btn.is-open .aga-session-picker-chevron {
+        transform: rotate(180deg);
+        opacity: 1;
+      }
+      .aga-dropdown-menu {
+        position: absolute;
+        min-width: 175px;
+        background: var(--dsw-alias-bg-layer-floating, #212226);
+        border: 1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.12));
+        border-radius: 12px;
+        padding: 6px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        z-index: 99999;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+      }
+      .aga-dropdown-menu.placement-top {
+        bottom: calc(100% + 6px);
+        left: 0;
+      }
+      .aga-dropdown-menu.placement-bottom {
+        top: calc(100% + 6px);
+        left: 0;
+      }
+      .aga-dropdown-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--dsw-alias-label-primary, #d1d5db);
+        transition: background 0.12s ease, color 0.12s ease;
+        gap: 12px;
+      }
+      .aga-dropdown-item:hover {
+        background: rgba(255, 255, 255, 0.08);
         color: #ffffff;
+      }
+      .aga-dropdown-item.is-selected {
+        color: #ffffff;
+        font-weight: 500;
+      }
+      .aga-dropdown-item-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .aga-dropdown-item-icon {
+        width: 14px;
+        height: 14px;
+        opacity: 0.7;
+        flex-shrink: 0;
+      }
+      .aga-dropdown-item:hover .aga-dropdown-item-icon {
+        opacity: 1;
+      }
+      .aga-dropdown-item-check {
+        width: 14px;
+        height: 14px;
+        color: #ffffff;
+        flex-shrink: 0;
       }
     `;
 
     function injectStylesOnce() {
-      if (!document.getElementById("antigravity-agents-styles")) {
-        const style = document.createElement("style");
+      let style = document.getElementById("antigravity-agents-styles");
+      if (!style) {
+        style = document.createElement("style");
         style.id = "antigravity-agents-styles";
-        style.textContent = CSS_STYLES;
         document.head.appendChild(style);
       }
+      style.textContent = CSS_STYLES;
     }
 
     // Icon for settings navigation
@@ -695,6 +774,9 @@ window.__ModuleLoader__.load({
       const sessionId = props.sessionId;
       const [selectedAgent, setSelectedAgent] = useState("default");
       const [mainAgents, setMainAgents] = useState([]);
+      const [isOpen, setIsOpen] = useState(false);
+      const [placement, setPlacement] = useState("top");
+      const wrapperRef = useRef(null);
 
       useEffect(() => {
         injectStylesOnce();
@@ -728,53 +810,153 @@ window.__ModuleLoader__.load({
         fetchSessionAgent();
       }, [fetchSessionAgent]);
 
-      const handleChange = async (e) => {
-        const next = e.target.value;
-        setSelectedAgent(next);
+      useEffect(() => {
+        if (!isOpen) return;
+        const handleClickOutside = (e) => {
+          if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+            setIsOpen(false);
+          }
+        };
+        const handleKeyDown = (e) => {
+          if (e.key === "Escape") {
+            setIsOpen(false);
+          }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+          document.removeEventListener("mousedown", handleClickOutside);
+          document.removeEventListener("keydown", handleKeyDown);
+        };
+      }, [isOpen]);
+
+      const toggleOpen = () => {
+        if (!isOpen && wrapperRef.current) {
+          const rect = wrapperRef.current.getBoundingClientRect();
+          setPlacement(rect.top > 220 ? "top" : "bottom");
+        }
+        setIsOpen(!isOpen);
+      };
+
+      const handleSelect = async (agentName) => {
+        setSelectedAgent(agentName);
+        setIsOpen(false);
         try {
           await fetch("/api/antigravity-agents/session", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ sessionId, mainAgent: next })
+            body: JSON.stringify({ sessionId, mainAgent: agentName })
           });
         } catch {}
       };
 
+      const displayLabel = selectedAgent === "default" ? "Default Agent" : selectedAgent;
+      const agentList = [
+        { name: "default", label: "Default Agent" },
+        ...mainAgents.map((a) => ({ name: a.name, label: a.name }))
+      ];
+
       return h(
         "div",
         {
-          className: "aga-session-picker",
+          ref: wrapperRef,
+          className: "aga-session-picker-wrapper",
           title: "Select active Google Antigravity main agent for this session"
         },
         h(
-          "svg",
+          "div",
           {
-            viewBox: "0 0 24 24",
-            width: 14,
-            height: 14,
-            fill: "none",
-            stroke: "currentColor",
-            strokeWidth: 2,
-            strokeLinecap: "round",
-            strokeLinejoin: "round",
-            style: { opacity: 0.8, flexShrink: 0 }
+            className: `aga-session-picker-btn ${isOpen ? "is-open" : ""}`,
+            onClick: toggleOpen
           },
-          h("circle", { cx: 12, cy: 7, r: 4 }),
-          h("circle", { cx: 4, cy: 19, r: 2.5 }),
-          h("circle", { cx: 20, cy: 19, r: 2.5 })
-        ),
-        h(
-          "select",
-          {
-            className: "aga-session-picker-select",
-            value: selectedAgent,
-            onChange: handleChange
-          },
-          h("option", { value: "default" }, "Default Agent"),
-          mainAgents.map((a) =>
-            h("option", { key: a.name, value: a.name }, a.name)
+          h(
+            "svg",
+            {
+              viewBox: "0 0 24 24",
+              width: 14,
+              height: 14,
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: 2,
+              strokeLinecap: "round",
+              strokeLinejoin: "round",
+              style: { opacity: 0.85, flexShrink: 0 }
+            },
+            h("circle", { cx: 12, cy: 7, r: 4 }),
+            h("circle", { cx: 4, cy: 19, r: 2.5 }),
+            h("circle", { cx: 20, cy: 19, r: 2.5 })
+          ),
+          h("span", { className: "aga-session-picker-label" }, displayLabel),
+          h(
+            "svg",
+            {
+              viewBox: "0 0 24 24",
+              width: 12,
+              height: 12,
+              fill: "none",
+              stroke: "currentColor",
+              strokeWidth: 2,
+              strokeLinecap: "round",
+              strokeLinejoin: "round",
+              className: "aga-session-picker-chevron"
+            },
+            h("polyline", { points: "6 9 12 15 18 9" })
           )
-        )
+        ),
+        isOpen &&
+          h(
+            "div",
+            { className: `aga-dropdown-menu placement-${placement}` },
+            agentList.map((item) => {
+              const isSelected = selectedAgent === item.name;
+              return h(
+                "div",
+                {
+                  key: item.name,
+                  className: `aga-dropdown-item ${isSelected ? "is-selected" : ""}`,
+                  onClick: () => handleSelect(item.name)
+                },
+                h(
+                  "div",
+                  { className: "aga-dropdown-item-left" },
+                  h(
+                    "svg",
+                    {
+                      viewBox: "0 0 24 24",
+                      width: 14,
+                      height: 14,
+                      fill: "none",
+                      stroke: "currentColor",
+                      strokeWidth: 2,
+                      strokeLinecap: "round",
+                      strokeLinejoin: "round",
+                      className: "aga-dropdown-item-icon"
+                    },
+                    h("circle", { cx: 12, cy: 7, r: 4 }),
+                    h("circle", { cx: 4, cy: 19, r: 2.5 }),
+                    h("circle", { cx: 20, cy: 19, r: 2.5 })
+                  ),
+                  h("span", null, item.label)
+                ),
+                isSelected &&
+                  h(
+                    "svg",
+                    {
+                      viewBox: "0 0 24 24",
+                      width: 14,
+                      height: 14,
+                      fill: "none",
+                      stroke: "currentColor",
+                      strokeWidth: 2.5,
+                      strokeLinecap: "round",
+                      strokeLinejoin: "round",
+                      className: "aga-dropdown-item-check"
+                    },
+                    h("polyline", { points: "20 6 9 17 4 12" })
+                  )
+              );
+            })
+          )
       );
     }
 
