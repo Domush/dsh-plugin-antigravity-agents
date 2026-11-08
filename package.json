@@ -1,0 +1,59 @@
+{
+  "name": "dsh-plugin-antigravity-agents",
+  "version": "1.0.0",
+  "description": "Native Google Antigravity agents loader, coordinator selection, and subagent orchestration engine for DeepSeek Harness",
+  "type": "module",
+  "license": "MIT",
+  "author": "Phillip Webber <github@webbsense.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Domush/dsh-plugin-antigravity-agents.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Domush/dsh-plugin-antigravity-agents/issues"
+  },
+  "homepage": "https://github.com/Domush/dsh-plugin-antigravity-agents#readme",
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "antigravity",
+    "antigravity-agents",
+    "subagent",
+    "agent-orchestration"
+  ],
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale",
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}

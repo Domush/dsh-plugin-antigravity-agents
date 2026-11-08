@@ -1,0 +1,5 @@
+- insert:
+    - id: antigravity-agents
+      name: 'dsh-plugin-antigravity-agents'
+      config:
+        enabled: true

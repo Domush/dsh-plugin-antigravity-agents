@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Google Antigravity 智能体",
+    "description": "支持从 .agents/agents 加载原生 Google Antigravity 智能体、主智能体选择及子智能体编排。"
+  }
+}

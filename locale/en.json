@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Google Antigravity Agents",
+    "description": "Enables native Google Antigravity agents loading, main agent selection, and subagent orchestration from .agents/agents."
+  }
+}
