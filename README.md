@@ -6,6 +6,7 @@
 Native Google Antigravity agents loader, coordinator selection, and subagent orchestration engine for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
 
 ---
+<img width="773" height="608" alt="image" src="https://github.com/user-attachments/assets/d345a565-be2c-498f-a170-8ae69c00a92d" />
 
 ## Overview & Antigravity Compatibility
 
@@ -24,6 +25,8 @@ Native Google Antigravity agents loader, coordinator selection, and subagent orc
 
 2. **Session Agent Selector**:
    Integrates an interactive agent dropdown directly into the conversation composer toolbar and new session interface, allowing users to switch between standard DSH prompts and specific Antigravity coordinators.
+
+<img width="502" height="193" alt="image" src="https://github.com/user-attachments/assets/70eb98d4-76e2-4711-be6a-5dc8bdd1fa2e" />
 
 3. **Persistent Default Agent**:
    Configure a default coordinator in the Web UI Settings tab that automatically pre-selects for all newly spawned sessions.
