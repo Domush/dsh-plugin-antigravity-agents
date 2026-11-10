@@ -26,7 +26,7 @@ Native Google Antigravity agents loader, coordinator selection, and subagent orc
 2. **Session Agent Selector**:
    Integrates an interactive agent dropdown directly into the conversation composer toolbar and new session interface, allowing users to switch between standard DSH prompts and specific Antigravity coordinators.
 
-<img width="502" height="193" alt="image" src="https://github.com/user-attachments/assets/70eb98d4-76e2-4711-be6a-5dc8bdd1fa2e" />
+<img width="392" height="155" alt="image" src="https://github.com/user-attachments/assets/5873710f-4048-4c29-a565-215c95eec4b3" />
 
 3. **Persistent Default Agent**:
    Configure a default coordinator in the Web UI Settings tab that automatically pre-selects for all newly spawned sessions.
