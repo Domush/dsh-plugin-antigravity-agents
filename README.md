@@ -50,9 +50,23 @@ Native Google Antigravity agents loader, coordinator selection, and subagent orc
 
 ## Installation
 
-### From NPM (Recommended)
-Add the plugin to your DeepSeek Harness profile dependencies:
+### In DeepSeek Harness UI (No Command Line Needed)
+1. Open the DeepSeek Harness Web UI and navigate to **Settings** → **Plugins**.
+2. Click the **"Add Plugin"** button.
+3. Paste in the plugin name:
+   ```text
+   dsh-plugin-antigravity-agents
+   ```
+4. Click **Install**. The plugin will be fetched from NPM and activated immediately.
 
+### Via DeepSeek Harness CLI
+Run the plugin install command in your terminal:
+```bash
+dsh plugin install dsh-plugin-antigravity-agents
+```
+
+### Via Profile Configuration (`package.json`)
+Add the plugin to your DeepSeek Harness profile dependencies:
 ```json
 {
   "dependencies": {
@@ -66,11 +80,6 @@ Add the plugin to your DeepSeek Harness profile dependencies:
     }
   }
 }
-```
-
-Or install it via the DeepSeek Harness Plugin Manager:
-```bash
-dsh plugin install dsh-plugin-antigravity-agents
 ```
 
 ---
