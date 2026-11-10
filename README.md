@@ -1,6 +1,7 @@
 # dsh-plugin-antigravity-agents
 
 [![npm version](https://img.shields.io/npm/v/dsh-plugin-antigravity-agents.svg)](https://www.npmjs.com/package/dsh-plugin-antigravity-agents)
+[![DSH Plugin](https://img.shields.io/badge/DSH-Plugin-blue.svg)](https://github.com/deepseek-ai)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Native Google Antigravity agents loader, coordinator selection, and subagent orchestration engine for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).

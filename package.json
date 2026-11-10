@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-antigravity-agents",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Native Google Antigravity agents loader, coordinator selection, and subagent orchestration engine for DeepSeek Harness",
   "type": "module",
   "license": "MIT",
