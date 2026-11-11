@@ -5,6 +5,15 @@ All notable changes to `dsh-plugin-antigravity-agents` will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-11-10
+
+### Security & Hardening
+- Enforced connection admission fence via `ctx.connection.requestRejection` on `/api/antigravity-agents` routes to prevent cross-origin/CSRF requests.
+- Validated workspace paths against `ctx.workspaceRegistry` to prevent arbitrary filesystem path creation.
+- Enforced `application/json` Content-Type validation on POST requests.
+- Tightened subagent matching to exact names and word boundaries, avoiding collisions with short agent names.
+- Cleaned up debug logging statements.
+
 ## [1.0.3] - 2026-11-09
 
 ### Added

@@ -24,7 +24,7 @@ try {
 
 export const Config = ConfigSchema;
 
-export const inject = ["systemPrompt", "tools", "workingDirectory", "agents", "webServer", "workspaceRegistry"];
+export const inject = ["systemPrompt", "tools", "workingDirectory", "agents", "webServer", "workspaceRegistry", "connection"];
 
 /** Robust YAML frontmatter parser for Antigravity agent markdown files */
 function parseFrontmatter(rawContent) {
@@ -136,21 +136,79 @@ function scanAgentsDirectory(dirPath, displayPrefix) {
   return entries;
 }
 
-/** Resolve candidate workspace directories */
+/** Validate whether a requested directory is an approved workspace in workspaceRegistry or workingDirectory */
+function getApprovedWorkspace(ctx, requestedCwd) {
+  const allowed = new Set();
+  try {
+    if (ctx.workspaceRegistry && typeof ctx.workspaceRegistry.list === "function") {
+      for (const ws of ctx.workspaceRegistry.list()) {
+        if (ws && ws.path) allowed.add(path.resolve(ws.path));
+      }
+    }
+  } catch {}
+  try {
+    if (ctx.workingDirectory) {
+      const cur = ctx.workingDirectory.get?.() || ctx.workingDirectory.current;
+      if (cur) allowed.add(path.resolve(cur));
+      if (ctx.workingDirectory.defaultDirectory) allowed.add(path.resolve(ctx.workingDirectory.defaultDirectory));
+    }
+  } catch {}
+  allowed.add(path.resolve(process.cwd()));
+
+  if (requestedCwd && typeof requestedCwd === "string") {
+    const resolved = path.resolve(requestedCwd);
+    if (allowed.has(resolved)) {
+      return resolved;
+    }
+  }
+
+  return Array.from(allowed)[0] || path.resolve(process.cwd());
+}
+
+/** Check if a subagent call arguments match an Antigravity agent specification */
+function matchesSubagent(agent, args) {
+  if (!agent || !agent.name || !args) return false;
+  const an = agent.name.toLowerCase();
+  const escaped = an.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const wordBoundaryRegex = new RegExp(`(?:^|[^a-zA-Z0-9_-])${escaped}(?![a-zA-Z0-9_-])`, "i");
+  const mentionRegex = new RegExp(`(?:^|[^a-zA-Z0-9_-])@${escaped}(?![a-zA-Z0-9_-])`, "i");
+
+  // Check exact name match
+  if (args.name) {
+    const nameStr = String(args.name).trim().toLowerCase();
+    if (nameStr === an) return true;
+  }
+
+  // Check description by exact match or whole word token match
+  if (args.description) {
+    const descStr = String(args.description).trim().toLowerCase();
+    if (descStr === an) return true;
+    if (wordBoundaryRegex.test(descStr)) return true;
+  }
+
+  // Check prompt for explicit @agent mention with boundary
+  if (args.prompt && mentionRegex.test(String(args.prompt))) {
+    return true;
+  }
+
+  return false;
+}
+
+/** Resolve candidate workspace directories strictly within approved boundaries */
 function resolveCandidateDirectories(ctx, requestedCwd) {
   const candidates = new Set();
-  if (requestedCwd && typeof requestedCwd === "string") {
-    candidates.add(path.resolve(requestedCwd));
-  }
+  const approved = getApprovedWorkspace(ctx, requestedCwd);
+  candidates.add(approved);
+
   try {
-    if (ctx.workspaceRegistry) {
+    if (ctx.workspaceRegistry && typeof ctx.workspaceRegistry.list === "function") {
       for (const ws of ctx.workspaceRegistry.list()) {
         if (ws && ws.path) candidates.add(path.resolve(ws.path));
       }
     }
   } catch {}
   try {
-    if (ctx.agents) {
+    if (ctx.agents && typeof ctx.agents.list === "function") {
       for (const a of ctx.agents.list()) {
         try {
           const d = ctx.workingDirectory.get(a.session);
@@ -164,7 +222,7 @@ function resolveCandidateDirectories(ctx, requestedCwd) {
       candidates.add(path.resolve(ctx.workingDirectory.defaultDirectory));
     }
   } catch {}
-  candidates.add(process.cwd());
+  candidates.add(path.resolve(process.cwd()));
   return Array.from(candidates);
 }
 
@@ -563,17 +621,8 @@ export function apply(ctx, rawConfig) {
       const settings = loadSettings(agentsDir);
       const disabledSet = new Set(settings.disabledAgents || []);
 
-      // Check if target name matches a subagent
-      const targetName = String(args.name || args.description || "").trim().toLowerCase();
-      const matched = allAgents.find((a) => {
-        const an = a.name.toLowerCase();
-        return (
-          targetName === an ||
-          targetName.startsWith(an) ||
-          targetName.includes(`@${an}`) ||
-          String(args.prompt || "").includes(`@${an}`)
-        );
-      });
+      // Check if target name or prompt matches an Antigravity subagent
+      const matched = allAgents.find((a) => matchesSubagent(a, args));
 
       if (matched && !disabledSet.has(matched.name)) {
         // Prepend instructions if not already present
@@ -599,17 +648,25 @@ export function apply(ctx, rawConfig) {
           kind: "exact",
           path: "/api/antigravity-agents",
           handler: async (req, res) => {
-            console.log("DEBUG: antigravity-agents API request", req.url);
             try {
+              if (ctx.connection && typeof ctx.connection.requestRejection === "function") {
+                const rejection = ctx.connection.requestRejection(req);
+                if (rejection !== void 0) {
+                  sendJson(res, rejection, { ok: false, error: rejection === 401 ? "Unauthorized" : "Forbidden" });
+                  return;
+                }
+              }
+
               const urlObj = new URL(String(req.url), "http://localhost");
-              const queryCwd = urlObj.searchParams.get("cwd");
-              console.log("DEBUG: queryCwd", queryCwd);
-              const { agentsDir } = findActiveAgentsDir(ctx, queryCwd, config.agentsDir);
-              console.log("DEBUG: agentsDir", agentsDir);
-              const allAgents = getAllAgents(ctx, queryCwd, config.agentsDir);
-              console.log("DEBUG: allAgents count", allAgents.length);
+              const rawCwd = urlObj.searchParams.get("cwd");
+              if (rawCwd && getApprovedWorkspace(ctx, rawCwd) !== path.resolve(rawCwd)) {
+                sendJson(res, 400, { ok: false, error: "Invalid or unregistered workspace path" });
+                return;
+              }
+              const approvedCwd = getApprovedWorkspace(ctx, rawCwd);
+              const { agentsDir } = findActiveAgentsDir(ctx, approvedCwd, config.agentsDir);
+              const allAgents = getAllAgents(ctx, approvedCwd, config.agentsDir);
               const settings = loadSettings(agentsDir);
-              console.log("DEBUG: settings", settings);
               const disabledSet = new Set(settings.disabledAgents || []);
 
               if (req.method === "GET") {
@@ -632,6 +689,11 @@ export function apply(ctx, rawConfig) {
               }
 
               if (req.method === "POST") {
+                const contentType = req.headers["content-type"] || "";
+                if (!contentType.includes("application/json")) {
+                  sendJson(res, 415, { ok: false, error: "Unsupported Media Type: expected application/json" });
+                  return;
+                }
                 const bodyText = await readBoundedBody(req);
                 if (!bodyText) {
                   sendJson(res, 400, { ok: false, error: "Empty or oversized request body" });
@@ -679,7 +741,6 @@ export function apply(ctx, rawConfig) {
               res.setHeader("allow", "GET, POST");
               res.end();
             } catch (err) {
-              console.error("DEBUG: API error", err);
               sendJson(res, 500, { ok: false, error: String(err?.message || err) });
             }
           }
@@ -695,10 +756,23 @@ export function apply(ctx, rawConfig) {
           path: "/api/antigravity-agents/session",
           handler: async (req, res) => {
             try {
+              if (ctx.connection && typeof ctx.connection.requestRejection === "function") {
+                const rejection = ctx.connection.requestRejection(req);
+                if (rejection !== void 0) {
+                  sendJson(res, rejection, { ok: false, error: rejection === 401 ? "Unauthorized" : "Forbidden" });
+                  return;
+                }
+              }
+
               const urlObj = new URL(String(req.url), "http://localhost");
               const sessionId = urlObj.searchParams.get("sessionId");
-              const queryCwd = urlObj.searchParams.get("cwd");
-              const { agentsDir } = findActiveAgentsDir(ctx, queryCwd, config.agentsDir);
+              const rawCwd = urlObj.searchParams.get("cwd");
+              if (rawCwd && getApprovedWorkspace(ctx, rawCwd) !== path.resolve(rawCwd)) {
+                sendJson(res, 400, { ok: false, error: "Invalid or unregistered workspace path" });
+                return;
+              }
+              const approvedCwd = getApprovedWorkspace(ctx, rawCwd);
+              const { agentsDir } = findActiveAgentsDir(ctx, approvedCwd, config.agentsDir);
               const settings = loadSettings(agentsDir);
 
               if (req.method === "GET") {
@@ -710,6 +784,11 @@ export function apply(ctx, rawConfig) {
               }
 
               if (req.method === "POST") {
+                const contentType = req.headers["content-type"] || "";
+                if (!contentType.includes("application/json")) {
+                  sendJson(res, 415, { ok: false, error: "Unsupported Media Type: expected application/json" });
+                  return;
+                }
                 const bodyText = await readBoundedBody(req);
                 if (!bodyText) {
                   sendJson(res, 400, { ok: false, error: "Empty request body" });
