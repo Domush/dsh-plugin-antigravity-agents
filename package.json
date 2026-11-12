@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-antigravity-agents",
-  "version": "1.0.4",
-  "description": "Native Google Antigravity agents loader, coordinator selection, and subagent orchestration engine for DeepSeek Harness",
+  "version": "1.0.5",
+  "description": "Add support for specialized agents and subagents to DeepSeek Harness. Features 100% Google Antigravity compatibility.",
   "type": "module",
   "license": "MIT",
   "author": "Phillip Webber <github@webbsense.com>",

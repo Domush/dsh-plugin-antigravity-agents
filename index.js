@@ -423,7 +423,7 @@ export function apply(ctx, rawConfig) {
         },
         model: {
           type: "string",
-          description: "Optional model override (e.g. 'flash' or 'pro'). Defaults to the subagent's configured model."
+          description: "Optional provider override. Defaults to system configuration."
         }
       },
       required: ["name", "prompt"]
@@ -487,28 +487,23 @@ export function apply(ctx, rawConfig) {
       // Delegate to standard DSH subagent or spawn_teammate tool if available
       const subagentTool = ctx.tools.get("subagent");
       if (subagentTool) {
-        const result = await subagentTool.execute(
-          {
-            prompt: subagentPrompt,
-            description: effectiveDescription,
-            model: effectiveModel
-          },
-          exec
+        const subagentPayload = {
+          prompt: subagentPrompt,
+          description: effectiveDescription
+        };
+        // Respect DSH subagent settings: only pass model/provider if the underlying tool allows model selection
+        const allowsModelSelection = Boolean(
+          subagentTool.parameters?.properties?.model && subagentTool.parameters?.properties?.provider
         );
-        return result;
-      }
-
-      const spawnTeammateTool = ctx.tools.get("spawn_teammate");
-      if (spawnTeammateTool) {
-        const result = await spawnTeammateTool.execute(
-          {
-            name: matched.name,
-            description: effectiveDescription,
-            prompt: subagentPrompt,
-            context: "fresh"
-          },
-          exec
-        );
+        if (allowsModelSelection && (args.provider || args.model || matched.model)) {
+          const provider = args.provider || "antigravity";
+          const model = args.model || matched.model;
+          if (provider && model) {
+            subagentPayload.provider = provider;
+            subagentPayload.model = model;
+          }
+        }
+        const result = await subagentTool.execute(subagentPayload, exec);
         return result;
       }
 
